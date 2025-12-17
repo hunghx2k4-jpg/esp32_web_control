@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <title>IoT Dashboard - Hưng</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #333; margin-bottom: 20px; }
+        h1 { color: #ff9900; font-size: 22px; }
+        .value { font-size: 60px; color: #00ff00; font-weight: bold; margin: 10px 0; }
+        
+        /* CSS cho Switch */
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00ff00; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        /* CSS cho Bảng Lịch sử */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #252525; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 12px; border-bottom: 1px solid #333; text-align: center; }
+        th { background: #333; color: #ff9900; }
+        .history-container { max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>GIÁM SÁT & ĐIỀU KHIỂN</h1>
+            <div id="led-count" class="value">0</div>
+            <p style="color: #888;">Số lần nháy cuối cùng</p>
+            
+            <hr style="border: 0.5px solid #333; margin: 20px 0;">
+            
+            <p>ĐIỀU KHIỂN LED</p>
+            <label class="switch">
+                <input type="checkbox" id="led-switch" onchange="toggleLED(this)">
+                <span class="slider"></span>
+            </label>
+            <p id="led-status" style="margin-top: 10px; color: #aaa;">Đang tắt</p>
+        </div>
+
+        <div class="card">
+            <h1>LỊCH SỬ CẬP NHẬT</h1>
+            <div class="history-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Giá trị</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyALTC0ThT449ECZzkICM-H0M8YaViaW6oo",
+            databaseURL: "https://test-faa9e-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "test-faa9e",
+            appId: "1:1077465915016:web:c0071de4affbb65334493d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 1. Lắng nghe số lần nháy và Cập nhật lịch sử
+        database.ref('/so_lan').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (val !== null) {
+                document.getElementById('led-count').innerText = val;
+                
+                // Thêm vào bảng lịch sử (đưa lên đầu)
+                const row = `<tr><td>${new Date().toLocaleTimeString()}</td><td>${val}</td></tr>`;
+                document.getElementById('history-body').insertAdjacentHTML('afterbegin', row);
+            }
+        });
+
+        // 2. Lắng nghe trạng thái LED để đồng bộ Switch
+        database.ref('/status_led').on('value', (snapshot) => {
+            const status = snapshot.val();
+            const switchInput = document.getElementById('led-switch');
+            const statusText = document.getElementById('led-status');
+            
+            if (status === 1) {
+                switchInput.checked = true;
+                statusText.innerText = "Đang bật";
+                statusText.style.color = "#00ff00";
+            } else {
+                switchInput.checked = false;
+                statusText.innerText = "Đang tắt";
+                statusText.style.color = "#aaa";
+            }
+        });
+
+        // 3. Hàm gửi lệnh điều khiển từ Web lên Firebase
+        function toggleLED(checkbox) {
+            const state = checkbox.checked ? 1 : 0;
+            database.ref('/').update({ status_led: state });
+        }
+    </script>
+</body>
+</html>
